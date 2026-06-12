@@ -1,164 +1,83 @@
 # TaskManager
 
-Full-stack task management application built with Next.js, Go, and PostgreSQL.
+Full-stack task management application — Next.js, Go, PostgreSQL.
 
-## Features
-
-- JWT signup and login
-- Password hashing with bcrypt
-- Protected task routes
-- Per-user task ownership, with optional admin access
-- Task CRUD
-- Status filtering and pagination
-- Search by title
-- Sort by due date, priority, created date, and title
-- Optimistic complete/delete updates
-- Server-sent events for live task updates
-- Activity log per task
-- Optional task attachments using AWS S3
-- Dark mode with persisted preference
-- Docker Compose setup
-
-## Tech Stack
+## Stack
 
 - Frontend: Next.js 16, React 19, Tailwind CSS v4
 - Backend: Go, Gin
 - Database: PostgreSQL 16
 - Auth: JWT
-- File storage: AWS S3, optional
+- Realtime: Server-Sent Events
+- Storage: AWS S3 (optional)
 
-## Quick Start With Docker
+## Run with Docker
 
-Requirements:
+Requires Docker Desktop only.
 
-- Docker Desktop
-
-Setup:
-
-```powershell
-copy .env.example .env
+```bash
+copy .env.example .env   # fill in JWT_SECRET and optionally AWS vars
 docker compose up --build
 ```
 
-Open:
+- App: http://localhost:3000
+- API: http://localhost:8080
 
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8080
-- PostgreSQL: localhost:5432
+## Run locally
 
-Docker overrides `DATABASE_URL` so the backend connects to the `db` service. The value in `.env.example` is for local non-Docker development.
+Requires Go 1.24+, Node.js 20+, PostgreSQL 16+
 
-## Local Development
-
-Requirements:
-
-- Go 1.24+
-- Node.js 20+
-- PostgreSQL 16+
-
-Create the local env file:
-
-```powershell
-copy .env.example .env
+```bash
+copy .env.example .env   # set DATABASE_URL to your local PostgreSQL
 ```
 
-Start PostgreSQL and make sure this database exists:
+Terminal 1 — backend:
 
-```sql
-CREATE DATABASE taskmanager;
+```bash
+cd backend && go run .
 ```
 
-Run the backend:
+Terminal 2 — frontend:
 
-```powershell
-cd backend
-go run .
-```
-
-Run the frontend in another terminal:
-
-```powershell
-cd frontend
-npm install
-npm run dev
+```bash
+cd frontend && npm install && npm run dev
 ```
 
 ## Environment Variables
 
+See `.env.example` for all variables. Key ones:
+
 | Variable | Required | Description |
-|---|---:|---|
-| `DATABASE_URL` | Yes | PostgreSQL connection string. Docker overrides this for the backend container. |
-| `JWT_SECRET` | Yes | Secret used to sign JWTs. Change this outside local development. |
-| `PORT` | No | Backend port. Defaults to `8080`. |
-| `FRONTEND_URL` | No | Allowed CORS origin. Defaults to `http://localhost:3000`. |
-| `NEXT_PUBLIC_API_URL` | Yes | Public backend URL used by the frontend. |
-| `AWS_ACCESS_KEY_ID` | No | AWS access key for task attachments. Leave blank to disable uploads. |
-| `AWS_SECRET_ACCESS_KEY` | No | AWS secret key for task attachments. |
-| `AWS_REGION` | No | AWS region for the S3 bucket. |
-| `AWS_S3_BUCKET` | No | S3 bucket name for uploaded task files. |
+|---|---|---|
+| `POSTGRES_USER` | Yes | PostgreSQL username |
+| `POSTGRES_PASSWORD` | Yes | PostgreSQL password |
+| `POSTGRES_DB` | Yes | Database name |
+| `DATABASE_URL` | Yes | Connection string (Docker sets this automatically) |
+| `JWT_SECRET` | Yes | JWT signing secret |
+| `NEXT_PUBLIC_API_URL` | Yes | Backend URL for the frontend |
+| `AWS_*` | No | S3 credentials — leave blank to disable attachments |
 
-## API Summary
-
-Auth:
-
-- `POST /auth/signup`
-- `POST /auth/login`
-
-Tasks:
-
-- `POST /tasks`
-- `GET /tasks`
-- `GET /tasks/:id`
-- `PATCH /tasks/:id`
-- `DELETE /tasks/:id`
-- `GET /tasks/:id/activities`
-- `POST /tasks/:id/attachments`
-- `GET /tasks/:id/attachments`
-- `DELETE /tasks/:id/attachments/:attachmentID`
-
-Realtime:
-
-- `GET /events`
-
-All task, attachment, activity, and event routes require:
-
-```text
-Authorization: Bearer <token>
-```
-
-## Tests And Checks
-
-Backend tests require `DATABASE_URL` and `JWT_SECRET`.
-
-```powershell
-cd backend
-go test ./...
-```
-
-Frontend lint:
-
-```powershell
-cd frontend
-npm run lint
-```
-
-## Notes And Tradeoffs
-
-- Attachments are optional. If AWS S3 variables are blank, upload endpoints return a configuration error while the rest of the app continues to work.
-- Admin users are supported by the `role` column. Sign up normally, then promote via Docker:
+## Tests
 
 ```bash
-docker compose exec db psql -U postgres -d taskmanager -c "UPDATE users SET role = 'admin' WHERE email = 'your@email.com';"
+cd backend && go test ./...
+cd frontend && npm run lint
 ```
 
-Or directly in PostgreSQL:
+## Admin
 
-```sql
-UPDATE users SET role = 'admin' WHERE email = 'your@email.com';
+Sign up normally, then run:
+
+```bash
+docker compose exec db psql -U $POSTGRES_USER -d $POSTGRES_DB \
+  -c "UPDATE users SET role = 'admin' WHERE email = 'you@example.com';"
 ```
 
-Log out and back in for the role to take effect.
+Log out and back in for the change to take effect.
 
-- JWTs expire after 7 days.
-- Database migrations run automatically on backend startup.
-- This project keeps the API simple with JSON error responses shaped as `{ "error": "message" }`.
+## Assumptions
+
+- Attachments are optional — app works without S3 credentials
+- SSE is used instead of WebSockets because the `/events` endpoint requires an `Authorization` header, which `EventSource` does not support
+- Database migrations run automatically on backend startup
+- JWT is stored in localStorage for simplicity
