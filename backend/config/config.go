@@ -8,13 +8,14 @@ import (
 )
 
 type Config struct {
-	DatabaseURL        string
-	JWTSecret          string
-	Port               string
-	FrontendURL        string
-	CloudinaryCloudName string
-	CloudinaryAPIKey   string
-	CloudinaryAPISecret string
+	DatabaseURL string
+	JWTSecret   string
+	Port        string
+	FrontendURL string
+	AWSAccessKey string
+	AWSSecretKey string
+	AWSRegion    string
+	AWSS3Bucket  string
 }
 
 func Load() *Config {
@@ -24,17 +25,15 @@ func Load() *Config {
 		}
 	}
 
-	databaseURL := requireEnv("DATABASE_URL")
-	jwtSecret := requireEnv("JWT_SECRET")
-
 	return &Config{
-		DatabaseURL:         databaseURL,
-		JWTSecret:           jwtSecret,
-		Port:                getEnv("PORT", "8080"),
-		FrontendURL:         getEnv("FRONTEND_URL", "http://localhost:3000"),
-		CloudinaryCloudName: getEnv("CLOUDINARY_CLOUD_NAME", ""),
-		CloudinaryAPIKey:    getEnv("CLOUDINARY_API_KEY", ""),
-		CloudinaryAPISecret: getEnv("CLOUDINARY_API_SECRET", ""),
+		DatabaseURL:  requireEnv("DATABASE_URL"),
+		JWTSecret:    requireEnv("JWT_SECRET"),
+		Port:         getEnv("PORT", "8080"),
+		FrontendURL:  getEnv("FRONTEND_URL", "http://localhost:3000"),
+		AWSAccessKey: getEnv("AWS_ACCESS_KEY_ID", ""),
+		AWSSecretKey: getEnv("AWS_SECRET_ACCESS_KEY", ""),
+		AWSRegion:    getEnv("AWS_REGION", ""),
+		AWSS3Bucket:  getEnv("AWS_S3_BUCKET", ""),
 	}
 }
 

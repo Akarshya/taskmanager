@@ -26,7 +26,7 @@ func main() {
 
 	authSvc := services.NewAuthService(db, cfg.JWTSecret)
 	taskSvc := services.NewTaskService(db)
-	attachSvc := services.NewAttachmentService(db, cfg.CloudinaryCloudName, cfg.CloudinaryAPIKey, cfg.CloudinaryAPISecret)
+	attachSvc := services.NewAttachmentService(db, cfg.AWSAccessKey, cfg.AWSSecretKey, cfg.AWSRegion, cfg.AWSS3Bucket)
 
 	r := gin.Default()
 	r.Use(cors.New(cors.Config{
