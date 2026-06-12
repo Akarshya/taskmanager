@@ -61,6 +61,16 @@ func (s *TaskService) List(callerID, role string, q dto.ListTasksQuery) (*dto.Ta
 	if sortBy == "" {
 		sortBy = "created_at"
 	}
+	sortColumns := map[string]string{
+		"created_at": "created_at",
+		"due_date":   "due_date",
+		"title":      "title",
+	}
+	sortColumn, ok := sortColumns[sortBy]
+	if !ok && sortBy != "priority" {
+		sortColumn = "created_at"
+	}
+
 	sortOrder := q.SortOrder
 	if sortOrder != "asc" {
 		sortOrder = "desc"
@@ -91,7 +101,7 @@ func (s *TaskService) List(callerID, role string, q dto.ListTasksQuery) (*dto.Ta
 		where = "WHERE " + strings.Join(conditions, " AND ")
 	}
 
-	orderClause := fmt.Sprintf("%s %s", sortBy, strings.ToUpper(sortOrder))
+	orderClause := fmt.Sprintf("%s %s", sortColumn, strings.ToUpper(sortOrder))
 	if sortBy == "priority" {
 		dir := "ASC"
 		if sortOrder == "desc" {

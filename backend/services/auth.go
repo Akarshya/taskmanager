@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
 	"taskmanager/dto"
 	"taskmanager/models"
@@ -38,7 +39,11 @@ func (s *AuthService) Signup(req dto.SignupRequest) (*models.User, string, error
 		req.Email, string(hash),
 	).Scan(&user.ID, &user.Email, &user.Role, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
-		return nil, "", ErrEmailTaken
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
+			return nil, "", ErrEmailTaken
+		}
+		return nil, "", err
 	}
 
 	token, err := s.generateToken(user.ID, user.Role)
