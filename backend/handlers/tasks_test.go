@@ -150,3 +150,111 @@ func TestTask_DeleteForbiddenForOtherUser(t *testing.T) {
 		t.Errorf("expected 403 when other user deletes task, got %d", w2.Code)
 	}
 }
+
+func TestTask_CreateValidation_EmptyTitle(t *testing.T) {
+	r, cleanup := setupTaskRouter(t)
+	defer cleanup()
+
+	token := signupAndGetToken(t, r, "validation_tasktest@example.com")
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, authedReq(http.MethodPost, "/tasks", token, map[string]interface{}{
+		"title": "",
+	}))
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 for empty title, got %d", w.Code)
+	}
+}
+
+func TestTask_CreateValidation_InvalidStatus(t *testing.T) {
+	r, cleanup := setupTaskRouter(t)
+	defer cleanup()
+
+	token := signupAndGetToken(t, r, "badstatus_tasktest@example.com")
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, authedReq(http.MethodPost, "/tasks", token, map[string]interface{}{
+		"title":  "Valid title",
+		"status": "invalid_status",
+	}))
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 for invalid status, got %d", w.Code)
+	}
+}
+
+func TestTask_GetByID_NotFound(t *testing.T) {
+	r, cleanup := setupTaskRouter(t)
+	defer cleanup()
+
+	token := signupAndGetToken(t, r, "notfound_tasktest@example.com")
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, authedReq(http.MethodGet, "/tasks/00000000-0000-0000-0000-000000000000", token, nil))
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected 404 for non-existent task, got %d", w.Code)
+	}
+}
+
+func TestTask_ListFiltersStatus(t *testing.T) {
+	r, cleanup := setupTaskRouter(t)
+	defer cleanup()
+
+	token := signupAndGetToken(t, r, "filter_tasktest@example.com")
+
+	r.ServeHTTP(httptest.NewRecorder(), authedReq(http.MethodPost, "/tasks", token, map[string]interface{}{"title": "Todo task", "status": "todo"}))
+	r.ServeHTTP(httptest.NewRecorder(), authedReq(http.MethodPost, "/tasks", token, map[string]interface{}{"title": "Done task", "status": "done"}))
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, authedReq(http.MethodGet, "/tasks?status=done", token, nil))
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 on list, got %d", w.Code)
+	}
+
+	var result map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &result) //nolint
+	tasks := result["data"].([]interface{})
+	for _, item := range tasks {
+		taskMap := item.(map[string]interface{})
+		if taskMap["status"] != "done" {
+			t.Errorf("expected all tasks to have status=done, got %v", taskMap["status"])
+		}
+	}
+}
+
+func TestTask_SearchByTitle(t *testing.T) {
+	r, cleanup := setupTaskRouter(t)
+	defer cleanup()
+
+	token := signupAndGetToken(t, r, "search_tasktest@example.com")
+
+	r.ServeHTTP(httptest.NewRecorder(), authedReq(http.MethodPost, "/tasks", token, map[string]interface{}{"title": "Buy groceries"}))
+	r.ServeHTTP(httptest.NewRecorder(), authedReq(http.MethodPost, "/tasks", token, map[string]interface{}{"title": "Fix deployment bug"}))
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, authedReq(http.MethodGet, "/tasks?search=groceries", token, nil))
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+
+	var result map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &result) //nolint
+	tasks := result["data"].([]interface{})
+	if len(tasks) != 1 {
+		t.Errorf("expected 1 search result, got %d", len(tasks))
+	}
+	if tasks[0].(map[string]interface{})["title"] != "Buy groceries" {
+		t.Errorf("expected 'Buy groceries' in results")
+	}
+}
+
+func TestTask_UnauthenticatedRequest(t *testing.T) {
+	r, cleanup := setupTaskRouter(t)
+	defer cleanup()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/tasks", nil)
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("expected 401 for unauthenticated request, got %d", w.Code)
+	}
+}
