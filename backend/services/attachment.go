@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"mime/multipart"
 	"time"
@@ -106,6 +107,11 @@ func (s *AttachmentService) Upload(callerID, role, taskID string, fh *multipart.
 		return nil, err
 	}
 
+	s.logActivity(taskID, callerID, "attachment_added", map[string]interface{}{
+		"file_name": fh.Filename,
+		"file_size": fh.Size,
+		"mime_type": mimeType,
+	})
 	return &attachment, nil
 }
 
@@ -137,11 +143,11 @@ func (s *AttachmentService) Delete(callerID, role, taskID, attachmentID string) 
 		return err
 	}
 
-	var s3Key, ownerID string
+	var s3Key, ownerID, fileName string
 	err := s.db.QueryRow(
-		`SELECT key, user_id FROM task_attachments WHERE id = $1 AND task_id = $2`,
+		`SELECT key, user_id, file_name FROM task_attachments WHERE id = $1 AND task_id = $2`,
 		attachmentID, taskID,
-	).Scan(&s3Key, &ownerID)
+	).Scan(&s3Key, &ownerID, &fileName)
 	if err == sql.ErrNoRows {
 		return ErrTaskNotFound
 	}
@@ -154,6 +160,9 @@ func (s *AttachmentService) Delete(callerID, role, taskID, attachmentID string) 
 
 	s.deleteFromS3(s3Key) //nolint
 	s.db.Exec(`DELETE FROM task_attachments WHERE id = $1`, attachmentID) //nolint
+	s.logActivity(taskID, callerID, "attachment_removed", map[string]interface{}{
+		"file_name": fileName,
+	})
 	return nil
 }
 
@@ -163,6 +172,14 @@ func (s *AttachmentService) deleteFromS3(key string) error {
 		Key:    aws.String(key),
 	})
 	return err
+}
+
+func (s *AttachmentService) logActivity(taskID, userID, action string, changes map[string]interface{}) {
+	b, _ := json.Marshal(changes)
+	s.db.Exec( //nolint
+		`INSERT INTO task_activities (task_id, user_id, action, changes) VALUES ($1, $2, $3, $4)`,
+		taskID, userID, action, string(b),
+	)
 }
 
 func (s *AttachmentService) checkTaskAccess(callerID, role, taskID string) error {

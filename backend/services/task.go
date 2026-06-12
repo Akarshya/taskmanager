@@ -119,11 +119,23 @@ func (s *TaskService) List(callerID, role string, q dto.ListTasksQuery) (*dto.Ta
 	}
 
 	args = append(args, q.Limit, offset)
-	rows, err := s.db.Query(fmt.Sprintf(
-		`SELECT id, user_id, title, description, status, priority, due_date, created_at, updated_at
-		 FROM tasks %s ORDER BY %s LIMIT $%d OFFSET $%d`,
-		where, orderClause, argIdx, argIdx+1,
-	), args...)
+
+	var rows *sql.Rows
+	var err error
+	isAdmin := role == "admin"
+	if isAdmin {
+		rows, err = s.db.Query(fmt.Sprintf(
+			`SELECT t.id, t.user_id, u.email, t.title, t.description, t.status, t.priority, t.due_date, t.created_at, t.updated_at
+			 FROM tasks t JOIN users u ON t.user_id = u.id %s ORDER BY %s LIMIT $%d OFFSET $%d`,
+			where, orderClause, argIdx, argIdx+1,
+		), args...)
+	} else {
+		rows, err = s.db.Query(fmt.Sprintf(
+			`SELECT id, user_id, title, description, status, priority, due_date, created_at, updated_at
+			 FROM tasks %s ORDER BY %s LIMIT $%d OFFSET $%d`,
+			where, orderClause, argIdx, argIdx+1,
+		), args...)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -132,8 +144,13 @@ func (s *TaskService) List(callerID, role string, q dto.ListTasksQuery) (*dto.Ta
 	tasks := []models.Task{}
 	for rows.Next() {
 		var t models.Task
-		rows.Scan(&t.ID, &t.UserID, &t.Title, &t.Description, //nolint
-			&t.Status, &t.Priority, &t.DueDate, &t.CreatedAt, &t.UpdatedAt)
+		if isAdmin {
+			rows.Scan(&t.ID, &t.UserID, &t.UserEmail, &t.Title, &t.Description, //nolint
+				&t.Status, &t.Priority, &t.DueDate, &t.CreatedAt, &t.UpdatedAt)
+		} else {
+			rows.Scan(&t.ID, &t.UserID, &t.Title, &t.Description, //nolint
+				&t.Status, &t.Priority, &t.DueDate, &t.CreatedAt, &t.UpdatedAt)
+		}
 		tasks = append(tasks, t)
 	}
 

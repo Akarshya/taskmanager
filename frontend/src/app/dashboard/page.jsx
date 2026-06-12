@@ -38,8 +38,35 @@ function EmptyState({ hasActiveFilters }) {
   );
 }
 
+function groupByUser(tasks) {
+  const groups = {};
+  for (const task of tasks) {
+    const email = task.user_email || 'Unknown';
+    if (!groups[email]) groups[email] = [];
+    groups[email].push(task);
+  }
+  return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
+}
+
+function TaskGrid({ tasks, onToggleComplete, onEdit, onDelete }) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {tasks.map(task => (
+        <TaskCard
+          key={task.id}
+          task={task}
+          onToggleComplete={onToggleComplete}
+          onEdit={onEdit}
+          onDelete={onDelete}
+        />
+      ))}
+    </div>
+  );
+}
+
 export default function DashboardPage() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+  const isAdmin = user?.role === 'admin';
 
   const [tasks, setTasks]         = useState([]);
   const [pagination, setPagination] = useState({ total: 0, page: 1, totalPages: 1 });
@@ -180,18 +207,30 @@ export default function DashboardPage() {
         <Spinner />
       ) : tasks.length === 0 ? (
         <EmptyState hasActiveFilters={hasActiveFilters} />
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {tasks.map(task => (
-            <TaskCard
-              key={task.id}
-              task={task}
+      ) : isAdmin ? (
+        groupByUser(tasks).map(([email, userTasks]) => (
+          <div key={email} className="mb-8">
+            <div className="flex items-center gap-3 mb-3 pb-2 border-b border-zinc-200 dark:border-zinc-800">
+              <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">{email}</span>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400">
+                {userTasks.length} task{userTasks.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+            <TaskGrid
+              tasks={userTasks}
               onToggleComplete={handleToggleComplete}
               onEdit={taskToEdit => setFormTask(taskToEdit)}
               onDelete={handleDelete}
             />
-          ))}
-        </div>
+          </div>
+        ))
+      ) : (
+        <TaskGrid
+          tasks={tasks}
+          onToggleComplete={handleToggleComplete}
+          onEdit={taskToEdit => setFormTask(taskToEdit)}
+          onDelete={handleDelete}
+        />
       )}
 
       <Pagination

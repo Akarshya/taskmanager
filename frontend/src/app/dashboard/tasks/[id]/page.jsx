@@ -82,8 +82,12 @@ export default function TaskDetailPage() {
   }, [id]);
 
   const refreshAttachments = useCallback(async () => {
-    const attachmentList = await api.get(`/tasks/${id}/attachments`);
+    const [attachmentList, activityList] = await Promise.all([
+      api.get(`/tasks/${id}/attachments`),
+      api.get(`/tasks/${id}/activities`),
+    ]);
     setAttachments(attachmentList || []);
+    setActivities(activityList || []);
   }, [id]);
 
   async function handleSave(payload) {
