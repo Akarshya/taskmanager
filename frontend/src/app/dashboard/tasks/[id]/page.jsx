@@ -127,6 +127,7 @@ export default function TaskDetailPage() {
         onClick={() => router.back()}
         className="text-sm text-zinc-500 dark:text-zinc-400 hover:text-violet-600 transition mb-6 flex items-center gap-1"
       >
+        <img src="/images/arrow-left.svg" alt="" width={14} height={14} className="dark:invert" />
         Back
       </button>
 

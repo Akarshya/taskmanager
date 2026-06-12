@@ -104,6 +104,13 @@ export default function DashboardPage() {
     fetchTasks(activeFilters);
   }, [activeFilters, fetchTasks]);
 
+  // If the current page is beyond total pages (e.g. after deleting tasks), go back to page 1
+  useEffect(() => {
+    if (!isLoading && pagination.totalPages > 0 && pagination.page > pagination.totalPages) {
+      setActiveFilters(prev => ({ ...prev, page: 1 }));
+    }
+  }, [isLoading, pagination.page, pagination.totalPages]);
+
   const handleSSEEvent = useCallback((event) => {
     if (event.type === 'task.created') {
       fetchTasks(activeFilters);
@@ -143,7 +150,7 @@ export default function DashboardPage() {
     setTasks(currentTasks => currentTasks.filter(currentTask => currentTask.id !== task.id));
     try {
       await api.delete(`/tasks/${task.id}`);
-      setPagination(prev => ({ ...prev, total: prev.total - 1 }));
+      fetchTasks(activeFilters);
     } catch {
       setTasks(currentTasks => [task, ...currentTasks]);
     }
@@ -236,6 +243,7 @@ export default function DashboardPage() {
       <Pagination
         currentPage={pagination.page}
         totalPages={pagination.totalPages}
+        totalItems={pagination.total}
         onPageChange={newPage => setActiveFilters(prev => ({ ...prev, page: newPage }))}
       />
 

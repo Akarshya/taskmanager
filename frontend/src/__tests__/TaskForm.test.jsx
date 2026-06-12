@@ -68,8 +68,8 @@ describe('TaskForm', () => {
     await waitFor(() => {
       expect(screen.getByDisplayValue('Deploy app')).toBeInTheDocument();
       expect(screen.getByDisplayValue('To prod')).toBeInTheDocument();
-      expect(screen.getByDisplayValue('in_progress')).toBeInTheDocument();
-      expect(screen.getByDisplayValue('high')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('In Progress')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('High')).toBeInTheDocument();
     });
   });
 

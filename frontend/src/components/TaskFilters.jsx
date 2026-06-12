@@ -45,6 +45,13 @@ export default function TaskFilters({ filters, onChange }) {
     updateFilter('sort_order', filters.sort_order === 'asc' ? 'desc' : 'asc');
   }
 
+  function resetFilters() {
+    setSearchInput('');
+    onChange({ ...filters, search: '', status: '', page: 1 });
+  }
+
+  const hasActiveFilters = Boolean(searchInput || filters.status);
+
   return (
     <div className="flex flex-wrap gap-3 mb-6">
       <input
@@ -82,6 +89,15 @@ export default function TaskFilters({ filters, onChange }) {
       >
         {filters.sort_order === 'asc' ? 'Asc' : 'Desc'}
       </button>
+
+      {hasActiveFilters && (
+        <button
+          onClick={resetFilters}
+          className="px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-sm text-zinc-500 dark:text-zinc-400 hover:text-red-500 dark:hover:text-red-400 hover:border-red-300 dark:hover:border-red-700 transition"
+        >
+          Reset filters
+        </button>
+      )}
     </div>
   );
 }
